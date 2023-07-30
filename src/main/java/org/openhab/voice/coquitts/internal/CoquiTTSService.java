@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -33,6 +34,7 @@ import org.openhab.core.audio.ByteArrayAudioStream;
 import org.openhab.core.audio.utils.AudioWaveUtils;
 import org.openhab.core.auth.client.oauth2.OAuthFactory;
 import org.openhab.core.config.core.ConfigurableService;
+import org.openhab.core.io.net.http.HttpClientFactory;
 import org.openhab.core.voice.TTSException;
 import org.openhab.core.voice.TTSService;
 import org.openhab.core.voice.Voice;
@@ -98,6 +100,7 @@ public class CoquiTTSService implements TTSService {
     private @NonNullByDefault({}) CoquiAPI apiImpl;
     private final ConfigurationAdmin configAdmin;
     private final OAuthFactory oAuthFactory;
+    private final HttpClientFactory clientFactory;
 
     /**
      * All voices for all supported locales
@@ -107,10 +110,13 @@ public class CoquiTTSService implements TTSService {
     private final CoquiTTSConfig config = new CoquiTTSConfig();
 
     @Activate
-    public CoquiTTSService(final @Reference ConfigurationAdmin configAdmin,
-            final @Reference OAuthFactory oAuthFactory) {
+    public CoquiTTSService(final @Reference ConfigurationAdmin configAdmin, final @Reference OAuthFactory oAuthFactory,
+            final @Reference HttpClientFactory clientFactory) {
+        logger.info("Starting coqui tts service");
         this.configAdmin = configAdmin;
         this.oAuthFactory = oAuthFactory;
+        this.clientFactory = clientFactory;
+        logger.debug("Finished initializing coqui tts service");
     }
 
     /**
@@ -118,27 +124,29 @@ public class CoquiTTSService implements TTSService {
      */
     @Activate
     protected void activate(Map<String, Object> config) {
+        logger.debug("Activating CoquiTTS");
         // create cache folder
         File userData = new File(OpenHAB.getUserDataFolder());
         File cacheFolder = new File(new File(userData, CACHE_FOLDER_NAME), SERVICE_PID);
         if (!cacheFolder.exists()) {
+            logger.debug("Cache folder not found... making...");
             cacheFolder.mkdirs();
         }
         logger.debug("Using cache folder {}", cacheFolder.getAbsolutePath());
 
-        apiImpl = new CoquiAPI(configAdmin, cacheFolder);
+        apiImpl = new CoquiAPI(configAdmin, cacheFolder, clientFactory);
         updateConfig(config);
     }
 
     @Deactivate
     protected void dispose() {
-        apiImpl.dispose();
+        logger.debug("Beginning dispose");
         audioFormats = new HashSet<AudioFormat>();
         allVoices = new HashSet<Voice>();
     }
 
     private Set<AudioFormat> initAudioFormats() {
-        logger.trace("Initializing audio formats");
+        logger.debug("Initializing audio formats");
         Set<AudioFormat> result = new HashSet<>();
         for (String format : apiImpl.getSupportedAudioFormats()) {
             AudioFormat audioFormat = getAudioFormat(format);
@@ -159,20 +167,17 @@ public class CoquiTTSService implements TTSService {
      */
     private Set<Voice> initVoices() {
         logger.trace("Initializing voices");
-        Set<Voice> result = new HashSet<>();
-        for (Locale locale : apiImpl.getSupportedLocales()) {
-            result.addAll(apiImpl.getVoicesForLocale(locale));
+        List<CoquiTTSVoice> result = apiImpl.listVoices();
+        if (result.size() == 0) {
+            result.add(new CoquiTTSVoice(new Locale("Undefined"), "Default Voice", CoquiAPI.DEFAULT_LANGUAGE_ID,
+                    CoquiAPI.DEFAULT_VOICE_ID));
         }
         if (logger.isTraceEnabled()) {
             for (Voice voice : result) {
                 logger.trace("Coqui Cloud TTS voice: {}", voice.getLabel());
             }
         }
-        if (result.size() == 0) {
-            result.add(new CoquiTTSVoice(new Locale("Undefined"), "Default Voice", CoquiAPI.DEFAULT_LANGUAGE_ID,
-                    CoquiAPI.DEFAULT_VOICE_ID));
-        }
-        return Collections.unmodifiableSet(result);
+        return Set.copyOf(result);
     }
 
     /**
@@ -185,14 +190,9 @@ public class CoquiTTSService implements TTSService {
         logger.debug("Updating configuration");
         if (newConfig != null) {
             config.updateConfig(newConfig);
-            if (config.hostname != null && !config.hostname.isEmpty() && config.port != null && config.scheme != null
-                    && !config.scheme.isEmpty()) {
-                apiImpl.setConfig(config);
-                if (apiImpl.isInitialized()) {
-                    allVoices = initVoices();
-                    audioFormats = initAudioFormats();
-                }
-            }
+            apiImpl.setConfig(config);
+            allVoices = initVoices();
+            audioFormats = initAudioFormats();
         } else {
             logger.warn("Missing Coqui Cloud TTS configuration.");
         }
@@ -253,10 +253,7 @@ public class CoquiTTSService implements TTSService {
     @Override
     public AudioStream synthesize(String text, Voice voice, AudioFormat requestedFormat) throws TTSException {
         logger.debug("Synthesize '{}' for voice '{}' in format {}", text, voice.getUID(), requestedFormat);
-        // Validate known api key
-        if (!apiImpl.isInitialized()) {
-            throw new TTSException("Missing service configuration.");
-        }
+
         // Validate arguments
         // trim text
         String trimmedText = text.trim();
@@ -264,7 +261,7 @@ public class CoquiTTSService implements TTSService {
             throw new TTSException("The passed text is null or empty");
         }
         if (!this.allVoices.contains(voice)) {
-            throw new TTSException("The passed voice is unsupported");
+            throw new TTSException("The passed voice is unsupported or service not initialized");
         }
         boolean isAudioFormatSupported = false;
         for (AudioFormat currentAudioFormat : this.audioFormats) {

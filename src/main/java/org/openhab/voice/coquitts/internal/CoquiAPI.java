@@ -23,23 +23,23 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Set;
 
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.audio.AudioFormat;
 import org.openhab.core.auth.AuthenticationException;
 import org.openhab.core.i18n.CommunicationException;
+import org.openhab.core.io.net.http.HttpClientFactory;
 import org.openhab.voice.coquitts.internal.dto.AudioEncoding;
 import org.openhab.voice.coquitts.internal.dto.CoquiTTSSpeaker;
 import org.openhab.voice.coquitts.internal.dto.CoquiTTSVoice;
 import org.osgi.service.cm.ConfigurationAdmin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 /**
  * Coqui Cloud TTS API call implementation.
  *
@@ -62,7 +62,6 @@ class CoquiAPI {
     /**
      * Supported voices and locales
      */
-    private final Map<Locale, Set<CoquiTTSVoice>> voices = new HashMap<>();
 
     private ICoquiTTSClient client;
 
@@ -77,15 +76,18 @@ class CoquiAPI {
     private @Nullable CoquiTTSConfig config;
 
     private final ConfigurationAdmin configAdmin;
+    private final HttpClientFactory httpClientFactory;
 
     /**
      * Constructor.
      *
      * @param cacheFolder Service cache folder
+     * @param clientFactory
      */
-    CoquiAPI(ConfigurationAdmin configAdmin, File cacheFolder) {
+    CoquiAPI(ConfigurationAdmin configAdmin, File cacheFolder, HttpClientFactory clientFactory) {
         this.configAdmin = configAdmin;
         this.cacheFolder = cacheFolder;
+        this.httpClientFactory = clientFactory;
         logger.debug("CoquiAPI object created");
     }
 
@@ -100,22 +102,16 @@ class CoquiAPI {
         String hostname = config.hostname;
         if (config.isCloudAccount) {
             if (config.apiKey != null && !config.apiKey.isEmpty()) {
-                this.client = new CoquiCloudTTSClient(config.apiKey);
+                this.client = new CoquiCloudTTSClient(config.apiKey, httpClientFactory);
             } else {
                 throw new IllegalArgumentException("Coqui using cloud account but no api key given");
             }
         } else {
-
             if (hostname != null && !hostname.isEmpty() && config.port != null && config.scheme != null) {
-                Integer port = Integer.valueOf(config.port);
                 this.client = new TTSClient(config.hostname, config.port);
+            } else {
+                logger.error("Self hosted option was set but one of hostname port or scheme has not been supplied.");
             }
-        }
-
-        try {
-            initVoices();
-        } catch (CommunicationException e) {
-            voices.clear();
         }
 
         // maintain cache
@@ -126,10 +122,6 @@ class CoquiAPI {
             }
             logger.debug("Cache purged.");
         }
-    }
-
-    public void dispose() {
-        voices.clear();
     }
 
     /**
@@ -143,43 +135,7 @@ class CoquiAPI {
         return formats;
     }
 
-    /**
-     * Supported locales.
-     *
-     * @return Set of locales
-     */
-    Set<Locale> getSupportedLocales() {
-        return voices.keySet();
-    }
-
-    /**
-     * Supported voices for locale.
-     *
-     * @param locale Locale
-     * @return Set of voices
-     */
-    Set<CoquiTTSVoice> getVoicesForLocale(Locale locale) {
-        Set<CoquiTTSVoice> localeVoices = voices.get(locale);
-        return localeVoices != null ? localeVoices : Set.of();
-    }
-
-    /**
-     * Coqui API call to load locales and voices.
-     *
-     * @throws AuthenticationException
-     * @throws CommunicationException
-     */
-    private void initVoices() throws CommunicationException {
-        voices.clear();
-        List<CoquiTTSVoice> allVoices = listVoices();
-        for (Locale locale : listLocales()) {
-            Set<CoquiTTSVoice> localeVoices = new HashSet<>();
-            localeVoices.addAll(allVoices);
-            voices.put(locale, localeVoices);
-        }
-    }
-
-    private List<CoquiTTSVoice> listVoices() throws CommunicationException {
+    protected List<CoquiTTSVoice> listVoices() throws CommunicationException {
         List<Locale> locales = listLocales();
         // locales.sort(null);
 
@@ -246,7 +202,6 @@ class CoquiAPI {
             return audio;
         } catch (AuthenticationException | CommunicationException e) {
             logger.warn("Error initializing Coqui Cloud TTS service: {}", e.getMessage());
-            voices.clear();
         } catch (FileNotFoundException e) {
             logger.warn("Could not write file {} to cache: {}", audioFileInCache, e.getMessage());
         } catch (IOException e) {
@@ -290,6 +245,7 @@ class CoquiAPI {
             textFileOutputStream.write(sb.toString().getBytes(StandardCharsets.UTF_8));
         }
     }
+
     /**
      * Removes the extension of a file name.
      *
@@ -344,7 +300,4 @@ class CoquiAPI {
         }
     }
 
-    boolean isInitialized() {
-        return voices != null;
-    }
 }

@@ -16,6 +16,8 @@ import java.util.Map;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Voice service implementation.
@@ -37,6 +39,8 @@ class CoquiTTSConfig {
      * Purge cache after configuration changes.
      */
     public Boolean purgeCache = Boolean.FALSE;
+
+    private final Logger logger = LoggerFactory.getLogger(CoquiTTSConfig.class);
 
     private static final String SCHEME_NAME = "scheme";
     private static final String HOSTNAME_NAME = "hostname";
@@ -61,6 +65,7 @@ class CoquiTTSConfig {
 
     public void updateConfig(Map<String, Object> newConfig) {
         String param = null;
+        logger.debug("Configuration update request received");
 
         // scheme
         param = getOrNull(newConfig, SCHEME_NAME);

@@ -25,15 +25,10 @@ import org.openhab.core.voice.Voice;
 @NonNullByDefault
 public class CoquiTTSVoice extends CoquiTTSSpeaker implements Voice {
 
-    /**
-     * Voice locale
-     */
     private final Locale locale;
 
-    /**
-     * Voice label
-     */
     private final String languageId;
+    private final String technical_name;
 
     /**
      * Constructs a Coqui Cloud TTS Voice for the passed data
@@ -45,6 +40,9 @@ public class CoquiTTSVoice extends CoquiTTSSpeaker implements Voice {
         super(label, speakerId);
         this.locale = locale;
         this.languageId = languageId;
+        this.technical_name = makeTechnicalName(languageId, locale, speakerId, label);
+        this.label = label + " - " + technical_name;
+
     }
 
     /**
@@ -63,9 +61,16 @@ public class CoquiTTSVoice extends CoquiTTSSpeaker implements Voice {
      * @return A String voice technical name
      */
     public String getTechnicalName() {
-        String lo = locale.getCountry().replaceAll("[^a-zA-Z0-9_]", "");
-        return (languageId + "_" + getSpeakerId() + "_" + getLabel()).replaceAll("-", "_").replaceAll("[^a-zA-Z0-9_]",
-                "");
+        return technical_name;
+    }
+
+    private static String makeTechnicalName(String languageId, Locale locale, String speakerId, String name) {
+        String lo = locale.getCountry();
+        return technifyString(languageId + "_" + lo + "_" + speakerId + "_" + name);
+    }
+
+    private static String technifyString(String input) {
+        return input.replaceAll("-", "_").replaceAll("[^a-zA-Z0-9_]", "");
     }
 
     /**

@@ -22,7 +22,7 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 @NonNullByDefault
 public class CoquiTTSSpeaker {
 
-    private final String label;
+    protected String label;
     private final String speakerId;
 
     public CoquiTTSSpeaker(String label, String speakerId) {

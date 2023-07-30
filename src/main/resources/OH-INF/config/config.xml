@@ -16,7 +16,7 @@
         </parameter-group>
 
         <parameter name="isCloudAccount" type="boolean" required="true" groupName="cloud">
-            <label>Is Clud Account</label>
+            <label>Is Cloud Account</label>
             <description>Turn this to false only if you have a self hosted Coqui TTS system running</description>
             <default>true</default>
         </parameter>
