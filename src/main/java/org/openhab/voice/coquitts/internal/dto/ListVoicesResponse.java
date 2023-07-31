@@ -42,8 +42,8 @@ public class ListVoicesResponse {
 
     @Override
     public String toString() {
-        return "ListVoicesResponse{" + "count=" + count + ", has_prev=" + has_prev + ", has_next=" + has_next + ", result="
-                + result + '}';
+        return "ListVoicesResponse{" + "count=" + count + ", has_prev=" + has_prev + ", has_next=" + has_next
+                + ", result=" + result + '}';
     }
 
     public class Person {

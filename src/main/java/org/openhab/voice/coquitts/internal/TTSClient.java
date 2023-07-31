@@ -28,7 +28,6 @@ public class TTSClient implements ICoquiTTSClient {
         // or throw exception on split > 1 for on /
         BASE_URL = HttpURI.createHttpURI("http", hostname, port, null, null, null, null);
         logger.info("object Created");
-
     }
 
     @Override
@@ -37,7 +36,6 @@ public class TTSClient implements ICoquiTTSClient {
         List<String> names = gson.fromJson(sendGetRequest("/api/speakers"), ArrayList.class);
         List<CoquiTTSSpeaker> speakers = new ArrayList<>();
         return names.stream().map((n) -> new CoquiTTSSpeaker(n, n)).collect(Collectors.toList());
-
     }
 
     @Override

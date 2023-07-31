@@ -6,43 +6,43 @@
 		https://openhab.org/schemas/config-description-1.0.0.xsd">
 
 	<config-description uri="voice:coquitts">
-        <parameter-group name="cloud">
-            <label>Coqui Cloud TTS Configuration</label>
-            <description>Parameters for Coqui cloud hosted TTS API.</description>
-        </parameter-group>
-        <parameter-group name="connectivity">
-            <label>TTS Configuration</label>
-            <description>Parameters for Coqui Self hosted TTS API.</description>
-        </parameter-group>
+		<parameter-group name="cloud">
+			<label>Coqui Cloud TTS Configuration</label>
+			<description>Parameters for Coqui cloud hosted TTS API.</description>
+		</parameter-group>
+		<parameter-group name="connectivity">
+			<label>TTS Configuration</label>
+			<description>Parameters for Coqui Self hosted TTS API.</description>
+		</parameter-group>
 
-        <parameter name="isCloudAccount" type="boolean" required="true" groupName="cloud">
-            <label>Is Cloud Account</label>
-            <description>Turn this to false only if you have a self hosted Coqui TTS system running</description>
-            <default>true</default>
-        </parameter>
-        <parameter name="apiKey" type="text" required="true" groupName="cloud">
-            <label>API Key for Cloud Account</label>
-            <description>API Key for Cloud Account (register at https://coqui.ai/)</description>
-            <context>password</context>
-        </parameter>
-        <parameter name="scheme" type="text" required="true" groupName="connectivity">
-            <label>Scheme</label>
-            <description>Coqui Scheme for Service</description>
-            <default>http</default>
-            <advanced>true</advanced>
-        </parameter>
-        <parameter name="hostname" type="text" required="true" groupName="connectivity">
-            <label>URL</label>
-            <description>Coqui Server Running service</description>
-            <advanced>true</advanced>
-            <default>localhost</default>
-        </parameter>
-        <parameter name="port" type="text" required="true" groupName="connectivity">
-            <label>Port</label>
-            <description>Port that the service is running on.</description>
-            <default>5002</default>
-            <advanced>true</advanced>
-        </parameter>
+		<parameter name="isCloudAccount" type="boolean" required="true" groupName="cloud">
+			<label>Is Cloud Account</label>
+			<description>Turn this to false only if you have a self hosted Coqui TTS system running</description>
+			<default>true</default>
+		</parameter>
+		<parameter name="apiKey" type="text" required="true" groupName="cloud">
+			<label>API Key for Cloud Account</label>
+			<description>API Key for Cloud Account (register at https://coqui.ai/)</description>
+			<context>password</context>
+		</parameter>
+		<parameter name="scheme" type="text" required="true" groupName="connectivity">
+			<label>Scheme</label>
+			<description>Coqui Scheme for Service</description>
+			<default>http</default>
+			<advanced>true</advanced>
+		</parameter>
+		<parameter name="hostname" type="text" required="true" groupName="connectivity">
+			<label>URL</label>
+			<description>Coqui Server Running service</description>
+			<advanced>true</advanced>
+			<default>localhost</default>
+		</parameter>
+		<parameter name="port" type="text" required="true" groupName="connectivity">
+			<label>Port</label>
+			<description>Port that the service is running on.</description>
+			<default>5002</default>
+			<advanced>true</advanced>
+		</parameter>
 		<parameter name="purgeCache" type="boolean">
 			<advanced>true</advanced>
 			<label>Purge Cache</label>

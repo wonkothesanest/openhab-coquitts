@@ -13,5 +13,4 @@ public interface ICoquiTTSClient {
     List<String> getLanguages() throws IOException;
 
     byte[] synthesize(String text, CoquiTTSVoice voice) throws IOException;
-
 }

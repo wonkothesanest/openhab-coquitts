@@ -1,11 +1,20 @@
 package org.openhab.voice.coquitts.internal;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.SequenceInputStream;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+
+import javax.sound.sampled.AudioFileFormat;
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.UnsupportedAudioFileException;
 
 import org.eclipse.jetty.client.api.Request;
 import org.eclipse.jetty.client.util.FutureResponseListener;
@@ -94,8 +103,63 @@ public class CoquiCloudTTSClient implements ICoquiTTSClient {
     public byte[] synthesize(String text, CoquiTTSVoice voice) throws IOException {
         try {
             logger.debug(String.format("Synthesizing text [{}] for voice {}.", text, voice.getLabel()));
+            String[] splits = text.split("(?<!\\w\\.\\w.)(?<![A-Z][a-z]\\.)(?<=\\.|\\?)\\s");
+
+            StringBuilder sb = new StringBuilder();
+            List<AudioInputStream> allClips = new ArrayList<AudioInputStream>();
+            for (int i = 0; i < splits.length; i++) {
+                String s = splits[i];
+                if (s.length() > 500) {
+                    throw new IOException(
+                            "Could not split text of TTS request into sentences of less than 500 characters in length. text: "
+                                    + text);
+                }
+
+                if (sb.length() + s.length() >= 500) {
+                    // RawType r = HttpUtil.downloadData(response.getAudio_url(), null, false, -1, 10000);
+                    byte[] b = makeCoquiTTSRequest(sb.toString(), voice).getBytes();
+                    logger.debug("Chunk length: " + b.length);
+                    allClips.add(AudioSystem.getAudioInputStream(new ByteArrayInputStream(b)));
+
+                    // reset request
+                    sb = new StringBuilder();
+                    sb.append(s);
+                } else {
+                    sb.append(s);
+                }
+            }
+            // Last call for the last sentence or batch of sentences
+            byte[] b = makeCoquiTTSRequest(sb.toString(), voice).getBytes();
+            logger.debug("Chunk length: " + b.length);
+            allClips.add(AudioSystem.getAudioInputStream(new ByteArrayInputStream(b)));
+
+            // Copy the right bytes out to the return
+            // Get total framelength
+            long totalFrameLength = 0;
+            for (AudioInputStream a : allClips) {
+                totalFrameLength += a.getFrameLength();
+            }
+            AudioInputStream appendedFiles = new AudioInputStream(
+                    new SequenceInputStream(Collections.enumeration(allClips)), allClips.get(0).getFormat(),
+                    totalFrameLength);
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            AudioSystem.write(appendedFiles, AudioFileFormat.Type.WAVE, baos);
+            return baos.toByteArray();
+        } catch (IllegalArgumentException e) {
+            throw new IOException(e);
+        } catch (UnsupportedAudioFileException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+            throw new IOException(e);
+        }
+    }
+
+    private RawType makeCoquiTTSRequest(String text, CoquiTTSVoice voice) throws IOException {
+        try {
             String url = basePath + createSampleEndpoint;
-            VoiceDataRequest req = new VoiceDataRequest(voice.getSpeakerId(), "Neutral", "Created by Openhab", text, 1);
+            // make request and add to bytebuffer
+            VoiceDataRequest req = new VoiceDataRequest(voice.getSpeakerId(), "Neutral", "Created by Openhab", text,
+                    1.0);
             HttpRequestBuilder builder = HttpRequestBuilder.postTo(url).withHeader("Authorization", "Bearer " + apiKey)
                     .withContent(gson.toJson(req), "application/json");
 
@@ -106,11 +170,9 @@ public class CoquiCloudTTSClient implements ICoquiTTSClient {
             FutureResponseListener listener = new FutureResponseListener(dataRequest, 20000 * 1024);
             dataRequest.send(listener);
             RawType r = new RawType(listener.get().getContent(), RawType.DEFAULT_MIME_TYPE);
-            // RawType r = HttpUtil.downloadData(response.getAudio_url(), null, false, -1, 10000);
-            return r.getBytes();
+            return r;
         } catch (InterruptedException | ExecutionException | IllegalArgumentException e) {
             throw new IOException(e);
         }
     }
-
 }

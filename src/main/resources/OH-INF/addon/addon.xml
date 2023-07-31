@@ -5,7 +5,8 @@
 
 	<type>voice</type>
 	<name>Coqui Cloud Text-to-speech</name>
-	<description>Coqui  TTS Service uses the opensource Coqui  Text-to-Speech API to convert text input into audio data of natural human speech.</description>
+	<description>Coqui TTS Service uses the opensource Coqui Text-to-Speech API to convert text input into audio data of
+		natural human speech.</description>
 	<connection>hybrid</connection>
 
 	<service-id>org.openhab.voice.coquitts</service-id>

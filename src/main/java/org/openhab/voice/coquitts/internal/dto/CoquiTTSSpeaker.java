@@ -37,5 +37,4 @@ public class CoquiTTSSpeaker {
     public String getSpeakerId() {
         return speakerId;
     }
-
 }

@@ -42,7 +42,6 @@ public class CoquiTTSVoice extends CoquiTTSSpeaker implements Voice {
         this.languageId = languageId;
         this.technical_name = makeTechnicalName(languageId, locale, speakerId, label);
         this.label = label + " - " + technical_name;
-
     }
 
     /**
@@ -96,5 +95,4 @@ public class CoquiTTSVoice extends CoquiTTSSpeaker implements Voice {
     public String getSpeakerId() {
         return super.getSpeakerId();
     }
-
 }
